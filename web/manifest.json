@@ -1,0 +1,9 @@
+{
+  "name": "PPT & Canva Remote Controller",
+  "short_name": "PPTRemote",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "description": "Control PowerPoint and Canva presentations and laser pointer using your smartphone"
+}

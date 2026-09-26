@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0b0f19">
+  <title>PPT & Canva Remote</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="status-badge">
+      <div id="status-dot" class="status-dot"></div>
+      <span id="status-text">Menghubungkan...</span>
+    </div>
+
+    <!-- Presentation Timer -->
+    <div class="timer-box">
+      <span id="timer-display" class="timer-display">00:00</span>
+      <button id="btn-timer-toggle" class="timer-btn" title="Start/Pause">▶</button>
+      <button id="btn-timer-reset" class="timer-btn" title="Reset">↺</button>
+    </div>
+
+    <!-- Header Actions -->
+    <div class="header-actions">
+      <button id="btn-fullscreen" class="icon-btn" title="Layar Penuh">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+        </svg>
+      </button>
+      <button id="btn-more" class="icon-btn" title="Menu Lanjutan">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Quick Presentation Bar -->
+  <div class="quick-tools">
+    <button id="btn-start" class="tool-chip" title="Mulai Slide (F5)">
+      <span>▶</span> Mulai (F5)
+    </button>
+    <button id="btn-resume" class="tool-chip" title="Lanjut Slide Aktif (Shift+F5)">
+      <span>⏯</span> Lanjut
+    </button>
+    <button id="btn-laser-toggle" class="tool-chip" title="Aktifkan Laser Pointer">
+      <span>🎯</span> Laser
+    </button>
+    <button id="btn-exit" class="tool-chip" title="Keluar (Esc)">
+      <span>✕</span> Keluar
+    </button>
+  </div>
+
+  <!-- Main Container -->
+  <main class="main-container">
+    <!-- Laser Pointer Touchpad Surface -->
+    <section class="trackpad-section">
+      <div id="trackpad" class="trackpad">
+        <div id="trackpad-dot" class="laser-indicator-dot"></div>
+        <div class="trackpad-hint">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="9"/>
+            <circle cx="12" cy="12" r="3" fill="currentColor"/>
+          </svg>
+          <span>Sentuh & geser untuk Laser Pointer PowerPoint</span>
+        </div>
+      </div>
+
+      <div class="trackpad-controls">
+        <button id="gyro-toggle" class="chip-sm" style="color: #38bdf8; font-weight: bold;">
+          🎯 Air-Mouse (Gyro)
+        </button>
+      </div>
+    </section>
+
+    <!-- Slide Navigation Buttons -->
+    <section class="nav-section">
+      <button id="btn-prev" class="btn-nav btn-prev" aria-label="Slide Sebelumnya">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M15 18l-6-6 6-6"/>
+        </svg>
+        <span>PREV</span>
+      </button>
+
+      <button id="btn-next" class="btn-nav btn-next" aria-label="Slide Berikutnya">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+          <path d="M9 18l6-6-6-6"/>
+        </svg>
+        <span>NEXT</span>
+      </button>
+    </section>
+  </main>
+
+  <!-- Canva Effects & Advanced Drawer -->
+  <div id="extra-drawer" class="extra-drawer">
+    <div class="drawer-header">
+      <div class="drawer-title">🎨 Efek Canva & Pintasan Tambahan</div>
+      <button id="btn-close-drawer" class="icon-btn">✕</button>
+    </div>
+    <!-- Canva Effects Grid -->
+    <div class="canva-grid">
+      <button class="canva-btn" data-effect="c">
+        <span class="canva-emoji">🎉</span>
+        <span>Confetti</span>
+      </button>
+      <button class="canva-btn" data-effect="d">
+        <span class="canva-emoji">🥁</span>
+        <span>Drumroll</span>
+      </button>
+      <button class="canva-btn" data-effect="o">
+        <span class="canva-emoji">🫧</span>
+        <span>Bubbles</span>
+      </button>
+      <button class="canva-btn" data-effect="q">
+        <span class="canva-emoji">🤫</span>
+        <span>Quiet</span>
+      </button>
+    </div>
+
+    <!-- Screen Blank Options (Protected) -->
+    <div style="margin-top: 10px; display: flex; gap: 8px;">
+      <button id="btn-blackout" class="tool-chip" style="flex: 1; padding: 10px; background: #1e293b;" title="Layar Hitam">
+        <span>⬛ Layar Hitam (B)</span>
+      </button>
+      <button id="btn-whiteout" class="tool-chip" style="flex: 1; padding: 10px; background: #1e293b;" title="Layar Putih">
+        <span>⬜ Layar Putih (W)</span>
+      </button>
+    </div>
+
+    <!-- Android App Download Link -->
+    <a href="/PPTRemote.apk" download style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; padding: 10px; background: rgba(37, 99, 235, 0.2); border: 1px solid #3b82f6; border-radius: 10px; color: #60a5fa; text-decoration: none; font-size: 0.82rem; font-weight: 600;">
+      <span>📱</span> Unduh Aplikasi Android (Dukungan Tombol Volume Fisik)
+    </a>
+  </div>
+
+  <script src="/js/websocket.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

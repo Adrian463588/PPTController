@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#0b0f19">
+
+    <!-- Top Connection Bar -->
+    <LinearLayout
+        android:id="@+id/ip_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="8dp"
+        android:background="#151d30"
+        android:gravity="center_vertical">
+
+        <EditText
+            android:id="@+id/input_server_ip"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="Contoh: 192.168.0.5:8000"
+            android:textColorHint="#64748b"
+            android:textColor="#f8fafc"
+            android:textSize="14sp"
+            android:inputType="textUri"
+            android:padding="8dp"
+            android:background="#1a233d" />
+
+        <Button
+            android:id="@+id/btn_connect"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="Hubungkan"
+            android:textSize="12sp"
+            android:backgroundTint="#2563eb"
+            android:textColor="#ffffff" />
+    </LinearLayout>
+
+    <!-- WebView hosting remote controller -->
+    <WebView
+        android:id="@+id/webview"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+</LinearLayout>
