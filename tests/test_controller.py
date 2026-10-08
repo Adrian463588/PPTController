@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from server.ws_server import PresentationServer
-from server.network_utils import get_local_ip, generate_qr_base64
+from server.network_utils import get_local_ip, generate_qr_base64, generate_terminal_qr
 
 @pytest.fixture
 def server_instance():
@@ -16,6 +16,13 @@ def test_network_utils():
     qr_b64 = generate_qr_base64("http://127.0.0.1:8765")
     assert isinstance(qr_b64, str)
     assert len(qr_b64) > 100
+
+    qr_term = generate_terminal_qr("http://127.0.0.1:8765")
+    assert isinstance(qr_term, str)
+    assert "\x1b[47m\x1b[30m" in qr_term
+    assert "\x1b[0m" in qr_term
+    assert len(qr_term.splitlines()) >= 10
+
 
 def test_api_endpoints(server_instance):
     client = TestClient(server_instance.app)
