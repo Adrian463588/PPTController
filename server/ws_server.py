@@ -103,13 +103,11 @@ class PresentationServer:
             dy = float(data.get("dy", 0))
             sens = float(data.get("sensitivity", 2.0))
             self.input_handler.move_cursor_relative(dx, dy, sens)
-            self.input_handler.set_laser_state(True)
 
         elif msg_type == "laser_pos":
             x_norm = float(data.get("x", 0.5))
             y_norm = float(data.get("y", 0.5))
             self.input_handler.set_cursor_normalized(x_norm, y_norm)
-            self.input_handler.set_laser_state(True)
 
         elif msg_type == "laser_state":
             visible = bool(data.get("visible", False))

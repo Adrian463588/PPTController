@@ -1,16 +1,18 @@
 import sys
-sys.stdout.reconfigure(line_buffering=True)
-import time
 import threading
-import webbrowser
+import time
 import tkinter as tk
 from tkinter import ttk
-import uvicorn
-from PIL import Image, ImageTk
-import qrcode
+import webbrowser
 
-from server.ws_server import PresentationServer
+from PIL import ImageTk
+import qrcode
+import uvicorn
+
 from server.network_utils import get_local_ip, print_terminal_qr
+from server.ws_server import PresentationServer
+
+sys.stdout.reconfigure(line_buffering=True)
 
 class PPTControllerApp:
     def __init__(self, port=8765):

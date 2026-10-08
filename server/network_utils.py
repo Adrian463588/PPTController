@@ -62,5 +62,5 @@ def print_terminal_qr(data: str):
         print("\n--- SCAN TO CONNECT ---")
         qr.print_ascii(invert=True)
         print(f"URL: {data}\n")
-    except Exception as e:
+    except Exception:
         print(f"URL: {data}")

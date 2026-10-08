@@ -2,6 +2,10 @@ package com.pptcontroller.remote;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.VibrationEffect;
@@ -9,6 +13,7 @@ import android.os.Vibrator;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowManager;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -18,13 +23,20 @@ import android.widget.EditText;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements SensorEventListener {
 
     private WebView webView;
     private EditText inputServerIp;
     private Button btnConnect;
     private SharedPreferences prefs;
     private Vibrator vibrator;
+
+    private SensorManager sensorManager;
+    private Sensor rotationSensor;
+    private Sensor gyroSensor;
+    private boolean isGyroRunning = false;
+    private final float[] rotationMatrix = new float[9];
+    private final float[] orientationAngles = new float[3];
 
     private static final String PREF_NAME = "PPT_REMOTE_PREFS";
     private static final String KEY_SERVER_IP = "server_ip";
@@ -39,6 +51,16 @@ public class MainActivity extends AppCompatActivity {
 
         vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
         prefs = getSharedPreferences(PREF_NAME, MODE_PRIVATE);
+
+        // Hardware sensor initialization
+        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        if (sensorManager != null) {
+            rotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+            if (rotationSensor == null) {
+                rotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION);
+            }
+            gyroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+        }
 
         inputServerIp = findViewById(R.id.input_server_ip);
         btnConnect = findViewById(R.id.btn_connect);
@@ -96,6 +118,23 @@ public class MainActivity extends AppCompatActivity {
         });
 
         webView.setWebChromeClient(new WebChromeClient());
+
+        webView.addJavascriptInterface(new Object() {
+            @JavascriptInterface
+            public boolean isSupported() {
+                return rotationSensor != null || gyroSensor != null;
+            }
+
+            @JavascriptInterface
+            public void start() {
+                runOnUiThread(() -> startGyroSensors());
+            }
+
+            @JavascriptInterface
+            public void stop() {
+                runOnUiThread(() -> stopGyroSensors());
+            }
+        }, "AndroidSensors");
     }
 
     private void loadServer(String serverAddress) {
@@ -156,6 +195,54 @@ public class MainActivity extends AppCompatActivity {
             return true;
         }
         return super.onKeyUp(keyCode, event);
+    }
+
+    private void startGyroSensors() {
+        if (sensorManager != null && !isGyroRunning) {
+            isGyroRunning = true;
+            if (rotationSensor != null) {
+                sensorManager.registerListener(this, rotationSensor, SensorManager.SENSOR_DELAY_GAME);
+            } else if (gyroSensor != null) {
+                sensorManager.registerListener(this, gyroSensor, SensorManager.SENSOR_DELAY_GAME);
+            }
+        }
+    }
+
+    private void stopGyroSensors() {
+        if (sensorManager != null && isGyroRunning) {
+            isGyroRunning = false;
+            sensorManager.unregisterListener(this);
+        }
+    }
+
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        if (!isGyroRunning || webView == null) return;
+
+        if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR) {
+            SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
+            SensorManager.getOrientation(rotationMatrix, orientationAngles);
+            // orientationAngles: [0] = azimuth, [1] = pitch, [2] = roll (all in radians)
+            float pitchDeg = (float) Math.toDegrees(orientationAngles[1]);
+            float rollDeg = (float) Math.toDegrees(orientationAngles[2]);
+            final String js = "if (window.onNativeOrientation) window.onNativeOrientation(" + pitchDeg + ", " + rollDeg + ");";
+            webView.post(() -> webView.evaluateJavascript(js, null));
+        } else if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
+            // values: [0] = rad/s around x (pitch), [1] = rad/s around y (roll)
+            float pitchDelta = (float) Math.toDegrees(event.values[0] * 0.02f);
+            float rollDelta = (float) Math.toDegrees(event.values[1] * 0.02f);
+            final String js = "if (window.onNativeGyroDelta) window.onNativeGyroDelta(" + rollDelta + ", " + pitchDelta + ");";
+            webView.post(() -> webView.evaluateJavascript(js, null));
+        }
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {}
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        stopGyroSensors();
     }
 
     @Override

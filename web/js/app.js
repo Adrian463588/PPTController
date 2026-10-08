@@ -207,42 +207,47 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Laser Pointer Trackpad
-  trackpad.addEventListener("touchstart", (e) => {
+  // Laser Pointer Trackpad (Supports Touch and Mouse Pointer Drag)
+  let isPointerActive = false;
+
+  const updateTrackpadDotPos = (clientX, clientY) => {
+    const rect = trackpad.getBoundingClientRect();
+    const x = Math.max(0, Math.min(rect.width, clientX - rect.left));
+    const y = Math.max(0, Math.min(rect.height, clientY - rect.top));
+    trackpadDot.style.left = `${x}px`;
+    trackpadDot.style.top = `${y}px`;
+  };
+
+  const startPointer = (clientX, clientY) => {
     requestWakeLock();
-    if (e.touches.length === 1) {
-      isTouching = true;
-      const t = e.touches[0];
-      lastTouchX = t.clientX;
-      lastTouchY = t.clientY;
-      touchStartTime = Date.now();
-      touchStartDist = 0;
+    isTouching = true;
+    lastTouchX = clientX;
+    lastTouchY = clientY;
+    touchStartTime = Date.now();
+    touchStartDist = 0;
 
-      trackpad.classList.add("active");
-      trackpadDot.style.display = "block";
-      updateTrackpadDot(t);
+    trackpad.classList.add("active");
+    trackpadDot.style.display = "block";
+    updateTrackpadDotPos(clientX, clientY);
 
-      vibrate(15);
-      ws.sendLaserState(true);
-    }
-  }, { passive: false });
+    vibrate(15);
+    ws.sendLaserState(true);
+  };
 
-  trackpad.addEventListener("touchmove", (e) => {
-    e.preventDefault(); // Prevent scroll/pull-to-refresh
-    if (!isTouching || e.touches.length !== 1) return;
-
-    const t = e.touches[0];
-    const dx = t.clientX - lastTouchX;
-    const dy = t.clientY - lastTouchY;
+  const movePointer = (clientX, clientY) => {
+    if (!isTouching) return;
+    const dx = clientX - lastTouchX;
+    const dy = clientY - lastTouchY;
 
     touchStartDist += Math.hypot(dx, dy);
-    lastTouchX = t.clientX;
-    lastTouchY = t.clientY;
+    lastTouchX = clientX;
+    lastTouchY = clientY;
 
-    updateTrackpadDot(t);
+    updateTrackpadDotPos(clientX, clientY);
     ws.sendLaserMove(dx, dy, true, sensitivity);
-  }, { passive: false });
+  };
 
-  const endTouch = () => {
+  const endPointer = () => {
     if (!isTouching) return;
     isTouching = false;
     trackpad.classList.remove("active");
@@ -257,24 +262,103 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  trackpad.addEventListener("touchend", endTouch);
-  trackpad.addEventListener("touchcancel", endTouch);
+  // Touch Listeners
+  trackpad.addEventListener("touchstart", (e) => {
+    if (e.touches.length === 1) {
+      startPointer(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  }, { passive: false });
 
-  function updateTrackpadDot(touch) {
-    const rect = trackpad.getBoundingClientRect();
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
-    trackpadDot.style.left = `${x}px`;
-    trackpadDot.style.top = `${y}px`;
-  }
+  trackpad.addEventListener("touchmove", (e) => {
+    e.preventDefault();
+    if (isTouching && e.touches.length === 1) {
+      movePointer(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  }, { passive: false });
 
+  trackpad.addEventListener("touchend", endPointer);
+  trackpad.addEventListener("touchcancel", endPointer);
 
+  // Mouse drag support for trackpad (Desktop browser testing)
+  trackpad.addEventListener("mousedown", (e) => {
+    isPointerActive = true;
+    startPointer(e.clientX, e.clientY);
+  });
+
+  window.addEventListener("mousemove", (e) => {
+    if (isPointerActive) {
+      movePointer(e.clientX, e.clientY);
+    }
+  });
+
+  window.addEventListener("mouseup", () => {
+    if (isPointerActive) {
+      isPointerActive = false;
+      endPointer();
+    }
+  });
 
   // Gyroscope / Air-Mouse Mode
+  function handleGyroDelta(dGamma, dBeta) {
+    if (!isGyroActive) return;
+
+    // Filter micro-tremors with fine deadzone
+    const deadzone = 0.08;
+    const absX = Math.abs(dGamma);
+    const absY = Math.abs(dBeta);
+
+    if (absX > deadzone || absY > deadzone) {
+      // Dynamic velocity acceleration (ballistics power-law like high-RPS mouse)
+      const speed = Math.hypot(dGamma, dBeta);
+      const accel = 1.0 + Math.min(speed * 0.75, 4.0);
+      const dynamicGain = 24.0 * gyroSpeedMultiplier * accel;
+
+      const moveX = absX > deadzone ? dGamma * dynamicGain : 0;
+      const moveY = absY > deadzone ? dBeta * dynamicGain : 0;
+
+      ws.sendLaserMove(moveX, moveY, true, 1.0);
+    }
+  }
+
+  function handleDeviceOrientation(e) {
+    if (!isGyroActive) return;
+    const beta = e.beta;   // Pitch (-180 to 180)
+    const gamma = e.gamma; // Roll (-90 to 90)
+    if (beta === null || gamma === null || typeof beta === "undefined") return;
+
+    if (lastGyroBeta !== null && lastGyroGamma !== null) {
+      let dGamma = gamma - lastGyroGamma;
+      let dBeta = beta - lastGyroBeta;
+
+      // Handle roll boundary wrapping
+      if (dGamma > 180) dGamma -= 360;
+      if (dGamma < -180) dGamma += 360;
+
+      handleGyroDelta(dGamma, dBeta);
+    }
+
+    lastGyroBeta = beta;
+    lastGyroGamma = gamma;
+  }
+
+  // Native Android Bridge hooks
+  window.onNativeOrientation = (beta, gamma) => {
+    handleDeviceOrientation({ beta, gamma });
+  };
+
+  window.onNativeGyroDelta = (dGamma, dBeta) => {
+    handleGyroDelta(dGamma, dBeta);
+  };
+
   if (gyroToggle) {
     gyroToggle.addEventListener("click", async () => {
       if (!isGyroActive) {
-        // Request iOS/Safari permission if needed
+        // 1. Android Native Sensors Bridge if available
+        if (window.AndroidSensors && typeof window.AndroidSensors.start === "function") {
+          window.AndroidSensors.start();
+        }
+
+        // 2. Request iOS/Safari permission if needed
         if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") {
           try {
             const perm = await DeviceOrientationEvent.requestPermission();
@@ -287,6 +371,7 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         }
 
+        // 3. Web DeviceOrientation listener
         window.addEventListener("deviceorientation", handleDeviceOrientation);
         isGyroActive = true;
         gyroToggle.classList.add("active");
@@ -294,6 +379,9 @@ document.addEventListener("DOMContentLoaded", () => {
         ws.sendLaserState(true);
         vibrate(40);
       } else {
+        if (window.AndroidSensors && typeof window.AndroidSensors.stop === "function") {
+          window.AndroidSensors.stop();
+        }
         window.removeEventListener("deviceorientation", handleDeviceOrientation);
         isGyroActive = false;
         gyroToggle.classList.remove("active");
@@ -304,41 +392,6 @@ document.addEventListener("DOMContentLoaded", () => {
         vibrate(20);
       }
     });
-  }
-
-  function handleDeviceOrientation(e) {
-    if (!isGyroActive) return;
-    const beta = e.beta;   // Pitch (-180 to 180)
-    const gamma = e.gamma; // Roll (-90 to 90)
-
-    if (lastGyroBeta !== null && lastGyroGamma !== null) {
-      let dGamma = gamma - lastGyroGamma;
-      let dBeta = beta - lastGyroBeta;
-
-      // Handle roll boundary wrapping
-      if (dGamma > 180) dGamma -= 360;
-      if (dGamma < -180) dGamma += 360;
-
-      // Filter micro-tremors with fine deadzone
-      const deadzone = 0.10;
-      const absX = Math.abs(dGamma);
-      const absY = Math.abs(dBeta);
-
-      if (absX > deadzone || absY > deadzone) {
-        // Dynamic velocity acceleration (ballistics power-law like high-RPS mouse)
-        const speed = Math.hypot(dGamma, dBeta);
-        const accel = 1.0 + Math.min(speed * 0.75, 4.0);
-        const dynamicGain = 22.0 * gyroSpeedMultiplier * accel;
-
-        const moveX = absX > deadzone ? dGamma * dynamicGain : 0;
-        const moveY = absY > deadzone ? dBeta * dynamicGain : 0;
-
-        ws.sendLaserMove(moveX, moveY, true, 1.0);
-      }
-    }
-
-    lastGyroBeta = beta;
-    lastGyroGamma = gamma;
   }
 
   // Presentation Timer / Stopwatch

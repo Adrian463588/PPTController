@@ -2,6 +2,7 @@ import ctypes
 import time
 import win32api
 import win32con
+import win32gui
 
 user32 = ctypes.windll.user32
 kernel32 = ctypes.windll.kernel32
@@ -182,26 +183,33 @@ class InputHandler:
                 user32.keybd_event(ord('L'), 0, 0, 0)
                 time.sleep(0.01)
                 user32.keybd_event(ord('L'), 0, win32con.KEYEVENTF_KEYUP, 0)
-        else:
+        elif platform == "powerpoint":
             # PowerPoint native laser pointer (Ctrl+L) or revert to arrow (Ctrl+A)
-            if visible and not self.laser_active:
-                self.laser_active = True
-                user32.keybd_event(win32con.VK_CONTROL, 0, 0, 0)
-                user32.keybd_event(ord('L'), 0, 0, 0)
-                time.sleep(0.01)
-                user32.keybd_event(ord('L'), 0, win32con.KEYEVENTF_KEYUP, 0)
-                user32.keybd_event(win32con.VK_CONTROL, 0, win32con.KEYEVENTF_KEYUP, 0)
-
-            elif not visible and self.laser_active:
-                self.laser_active = False
-                user32.keybd_event(win32con.VK_CONTROL, 0, 0, 0)
-                user32.keybd_event(ord('A'), 0, 0, 0)
-                time.sleep(0.01)
-                user32.keybd_event(ord('A'), 0, win32con.KEYEVENTF_KEYUP, 0)
-                user32.keybd_event(win32con.VK_CONTROL, 0, win32con.KEYEVENTF_KEYUP, 0)
+            # Only trigger shortcut if slide show (screenClass) is actually active
+            h_slideshow = user32.FindWindowW("screenClass", None)
+            if h_slideshow:
+                if visible and not self.laser_active:
+                    self.laser_active = True
+                    user32.keybd_event(win32con.VK_CONTROL, 0, 0, 0)
+                    user32.keybd_event(ord('L'), 0, 0, 0)
+                    time.sleep(0.01)
+                    user32.keybd_event(ord('L'), 0, win32con.KEYEVENTF_KEYUP, 0)
+                    user32.keybd_event(win32con.VK_CONTROL, 0, win32con.KEYEVENTF_KEYUP, 0)
+                elif not visible and self.laser_active:
+                    self.laser_active = False
+                    user32.keybd_event(win32con.VK_CONTROL, 0, 0, 0)
+                    user32.keybd_event(ord('A'), 0, 0, 0)
+                    time.sleep(0.01)
+                    user32.keybd_event(ord('A'), 0, win32con.KEYEVENTF_KEYUP, 0)
+                    user32.keybd_event(win32con.VK_CONTROL, 0, win32con.KEYEVENTF_KEYUP, 0)
+            else:
+                self.laser_active = visible
+        else:
+            # Canva or generic app: track active state without sending rogue Ctrl+L to browser
+            self.laser_active = visible
 
     def move_cursor_relative(self, dx: float, dy: float, sensitivity: float = 1.8):
-        """Moves cursor coordinates on screen smoothly, relative to real OS position."""
+        """Moves cursor coordinates on screen smoothly, relative to real OS position and generates mouse movement event."""
         self._ensure_interactive_desktop()
         try:
             pt = win32api.GetCursorPos()
@@ -209,17 +217,40 @@ class InputHandler:
         except Exception:
             cur_x, cur_y = self.cursor_x, self.cursor_y
 
-        self.cursor_x = max(0, min(self.screen_width, cur_x + int(dx * sensitivity)))
-        self.cursor_y = max(0, min(self.screen_height, cur_y + int(dy * sensitivity)))
+        # Handle screen bounds: check if PowerPoint slideshow window is active
+        h_slideshow = user32.FindWindowW("screenClass", None)
+        if h_slideshow and user32.IsWindowVisible(h_slideshow):
+            rect = win32gui.GetWindowRect(h_slideshow)
+            min_x, min_y, max_x, max_y = rect[0], rect[1], rect[2], rect[3]
+        else:
+            min_x, min_y = 0, 0
+            max_x, max_y = self.screen_width, self.screen_height
+
+        self.cursor_x = max(min_x, min(max_x, cur_x + int(dx * sensitivity)))
+        self.cursor_y = max(min_y, min(max_y, cur_y + int(dy * sensitivity)))
+
         user32.SetCursorPos(self.cursor_x, self.cursor_y)
+        delta_x = self.cursor_x - cur_x
+        delta_y = self.cursor_y - cur_y
+        user32.mouse_event(win32con.MOUSEEVENTF_MOVE, delta_x, delta_y, 0, 0)
         return self.cursor_x, self.cursor_y
 
     def set_cursor_normalized(self, norm_x: float, norm_y: float):
         """Sets cursor position using normalized coordinates (0.0 to 1.0)."""
         self._ensure_interactive_desktop()
-        self.cursor_x = int(max(0.0, min(1.0, norm_x)) * self.screen_width)
-        self.cursor_y = int(max(0.0, min(1.0, norm_y)) * self.screen_height)
+        h_slideshow = user32.FindWindowW("screenClass", None)
+        if h_slideshow and user32.IsWindowVisible(h_slideshow):
+            rect = win32gui.GetWindowRect(h_slideshow)
+            min_x, min_y, max_x, max_y = rect[0], rect[1], rect[2], rect[3]
+            w = max_x - min_x
+            h = max_y - min_y
+            self.cursor_x = int(min_x + max(0.0, min(1.0, norm_x)) * w)
+            self.cursor_y = int(min_y + max(0.0, min(1.0, norm_y)) * h)
+        else:
+            self.cursor_x = int(max(0.0, min(1.0, norm_x)) * self.screen_width)
+            self.cursor_y = int(max(0.0, min(1.0, norm_y)) * self.screen_height)
         user32.SetCursorPos(self.cursor_x, self.cursor_y)
+        user32.mouse_event(win32con.MOUSEEVENTF_MOVE, 1, 1, 0, 0)
         return self.cursor_x, self.cursor_y
 
     def click(self, button='left'):

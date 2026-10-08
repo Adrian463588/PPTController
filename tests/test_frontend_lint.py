@@ -1,6 +1,5 @@
 import subprocess
 from pathlib import Path
-import pytest
 
 def test_javascript_syntax_and_runtime_integrity():
     """Validates that frontend JavaScript files have valid syntax and zero ReferenceErrors."""
