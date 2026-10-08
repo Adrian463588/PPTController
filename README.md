@@ -1,12 +1,19 @@
 # PPTController 📱🎯
 
-> **Aplikasi Smartphone Presentation Remote & Laser Pointer untuk Microsoft PowerPoint dan Canva berbasis WebSockets, Python, dan Android ADB.**
+> **Aplikasi Smartphone Presentation Remote & Laser Pointer untuk Microsoft PowerPoint, Google Slides, dan Canva berbasis WebSockets, Python, dan Android ADB.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB.svg?logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![Android](https://img.shields.io/badge/Android-SDK%2034-3DDC84.svg?logo=android&logoColor=white)](https://developer.android.com)
 [![Security: DevSecOps](https://img.shields.io/badge/DevSecOps-No%20Secrets%20Leaked-brightgreen.svg)](https://github.com)
+
+---
+
+### 📥 Download Aplikasi Android (Terbaru)
+Unduh langsung file APK ke HP Android Anda untuk menikmati kontrol slide menggunakan tombol volume fisik:
+* 📲 **[Download PPTRemote.apk (Versi Terbaru v1.1.0)](https://github.com/Adrian463588/PPTController/releases/latest/download/PPTRemote.apk)** *(GitHub Releases)*
+* 📦 **[Download Langsung dari Repositori (Raw File)](https://raw.githubusercontent.com/Adrian463588/PPTController/main/PPTRemote.apk)** *(Mirror)*
 
 ---
 

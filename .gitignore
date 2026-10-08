@@ -47,6 +47,8 @@ android/local.properties
 android/.idea/
 android/*.iml
 *.apk
+!PPTRemote.apk
+!web/PPTRemote.apk
 *.ap_
 *.aab
 *.dex
