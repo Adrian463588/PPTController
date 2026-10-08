@@ -12,7 +12,7 @@
 
 ### 📥 Download Aplikasi Android (Terbaru)
 Unduh langsung file APK ke HP Android Anda untuk menikmati kontrol slide menggunakan tombol volume fisik:
-* 📲 **[Download PPTRemote.apk (Versi Terbaru v1.2.0)](https://github.com/Adrian463588/PPTController/releases/latest/download/PPTRemote.apk)** *(GitHub Releases)*
+* 📲 **[Download PPTRemote.apk (Versi Terbaru v1.2.1)](https://github.com/Adrian463588/PPTController/releases/latest/download/PPTRemote.apk)** *(GitHub Releases)*
 * 📦 **[Download Langsung dari Repositori (Raw File)](https://raw.githubusercontent.com/Adrian463588/PPTController/main/PPTRemote.apk)** *(Mirror)*
 
 ---

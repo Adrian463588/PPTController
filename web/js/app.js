@@ -21,6 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const timerDisplay = document.getElementById("timer-display");
   const btnTimerToggle = document.getElementById("btn-timer-toggle");
   const btnTimerReset = document.getElementById("btn-timer-reset");
+  const canvaBtns = document.querySelectorAll(".canva-btn");
   const gyroToggle = document.getElementById("gyro-toggle");
   const gyroSpeedBtn = document.getElementById("gyro-speed");
 
