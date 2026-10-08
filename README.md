@@ -12,7 +12,7 @@
 
 ### 📥 Download Aplikasi Android (Terbaru)
 Unduh langsung file APK ke HP Android Anda untuk menikmati kontrol slide menggunakan tombol volume fisik:
-* 📲 **[Download PPTRemote.apk (Versi Terbaru v1.1.0)](https://github.com/Adrian463588/PPTController/releases/latest/download/PPTRemote.apk)** *(GitHub Releases)*
+* 📲 **[Download PPTRemote.apk (Versi Terbaru v1.2.0)](https://github.com/Adrian463588/PPTController/releases/latest/download/PPTRemote.apk)** *(GitHub Releases)*
 * 📦 **[Download Langsung dari Repositori (Raw File)](https://raw.githubusercontent.com/Adrian463588/PPTController/main/PPTRemote.apk)** *(Mirror)*
 
 ---
@@ -26,21 +26,23 @@ Saat melakukan presentasi penting (seperti sidang skripsi, seminar, pitch deck b
 Aplikasi ini mendukung kontrol navigasi slide dan pointer laser untuk berbagai platform presentasi populer:
 * **Microsoft PowerPoint** (Slideshow fullscreen, Presenter View, dan mode edit)
 * **Canva Presentation** (di Google Chrome, Edge, Firefox)
-* **Google Slides**
+* **Google Slides** (dengan pintasan laser pointer `L`)
 * **PDF Presenter / Adobe Acrobat Reader**
 
 ---
 
 ## ✨ Fitur-Fitur Utama
 
-1. **Navigasi Slide Universal & Responsif:**
+1. **Navigasi Slide Universal & Responsif (Anti Double-Jump):**
    * **Tombol Sentuh di HP:** Tombol **NEXT** besar yang ramah jempol dan tombol **PREV**.
+   * **Proteksi Single-Keystroke & Debounce:** Menjamin setiap penekanan tombol hanya memajukan/memundurkan tepat 1 slide (mencegah slide melompat ganda).
    * **Dukungan Tombol Volume Fisik (Android):** Tekan tombol fisik **Volume Up** pada bodi HP untuk *Next Slide* dan **Volume Down** untuk *Prev Slide*. Anda bisa berpindah slide tanpa perlu melihat layar HP atau bahkan saat HP berada di dalam saku jas/celana.
-2. **Native Laser Pointer PowerPoint (`Ctrl + L`):**
-   * Menggunakan engine laser pointer resmi bawaan Microsoft PowerPoint yang diakselerasi oleh GPU.
+2. **Native Laser Pointer & High-RPS Air-Mouse:**
    * **Mode Touchpad:** Sentuh dan geser jempol di kotak touchpad HP untuk mengarahkan laser pointer secara presisi tanpa lag.
-   * **Mode Air-Mouse (Gyroscope):** Arahkan HP di udara seperti remote pointer fisik menggunakan sensor orientasi ponsel.
-   * Otomatis kembali ke kursor panah standar (`Ctrl + A`) saat sentuhan dilepas.
+   * **Mode Air-Mouse (Gyroscope) dengan Dynamic Ballistics:** Gerakkan kursor di udara hanya dengan sedikit jentikan pergelangan tangan berkat kurva akselerasi non-linear. Menjangkau seluruh sudut layar tanpa perlu gerakan tangan lebar.
+   * **Pilihan Kecepatan Gyro Instan:** Tersedia tombol preset kecepatan (*1x Normal*, *2x Cepat*, dan *3x Turbo*) yang dapat diubah dalam 1 ketukan.
+   * **Dukungan Multi-Engine:** Otomatis menyesuaikan mesin pointer: `Ctrl + L` untuk PowerPoint, `L` untuk Google Slides, dan mouse tracking halus untuk Canva.
+   * Otomatis kembali ke kursor panah standar saat sentuhan dilepas.
 3. **Pintasan Presenter Terpadu:**
    * **Mulai Slideshow (`F5`):** Memulai presentasi dari awal.
    * **Lanjut Slideshow (`Shift + F5`):** Melanjutkan slide show dari slide aktif.
