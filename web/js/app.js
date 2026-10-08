@@ -85,27 +85,36 @@ document.addEventListener("DOMContentLoaded", () => {
   // Start WS connection
   ws.connect();
 
-  // Slide Navigation
-  btnNext.addEventListener("click", () => {
-    vibrate(40);
+  // Slide Navigation with client-side debounce guard
+  let lastNavTime = 0;
+  const navDebounceMs = 250;
+
+  const triggerNav = (action, vibTime = 30) => {
+    const now = Date.now();
+    if (now - lastNavTime < navDebounceMs) return;
+    lastNavTime = now;
+    vibrate(vibTime);
     requestWakeLock();
-    ws.sendAction("next");
+    ws.sendAction(action);
+  };
+  window.triggerNav = triggerNav;
+
+  btnNext.addEventListener("click", (e) => {
+    e.preventDefault();
+    triggerNav("next", 40);
   });
 
-  btnPrev.addEventListener("click", () => {
-    vibrate(30);
-    requestWakeLock();
-    ws.sendAction("prev");
+  btnPrev.addEventListener("click", (e) => {
+    e.preventDefault();
+    triggerNav("prev", 30);
   });
 
   // Keyboard shortcut listener on mobile (e.g. Volume Keys if wrapped or hardware keyboard)
   window.addEventListener("keydown", (e) => {
     if (e.key === "ArrowRight" || e.key === "PageDown" || e.code === "VolumeUp") {
-      vibrate(30);
-      ws.sendAction("next");
+      triggerNav("next", 30);
     } else if (e.key === "ArrowLeft" || e.key === "PageUp" || e.code === "VolumeDown") {
-      vibrate(30);
-      ws.sendAction("prev");
+      triggerNav("prev", 30);
     }
   });
 

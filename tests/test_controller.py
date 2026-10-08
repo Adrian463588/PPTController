@@ -80,3 +80,14 @@ def test_websocket_actions(server_instance):
         pong_msg = websocket.receive_json()
         assert pong_msg["type"] == "pong"
         assert pong_msg["time"] == 12345
+
+def test_slide_debounce(server_instance):
+    handler = server_instance.input_handler
+    # First action succeeds
+    assert handler.next_slide() is True
+    # Immediate second action within cooldown is debounced
+    assert handler.next_slide() is False
+    # After cooldown period, action succeeds
+    import time
+    time.sleep(0.26)
+    assert handler.next_slide() is True

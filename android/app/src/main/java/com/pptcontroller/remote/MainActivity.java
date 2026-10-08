@@ -118,8 +118,8 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        // Call remoteWS.sendAction in WebView
-        final String script = "if (window.remoteWS) { window.remoteWS.sendAction('" + action + "'); }";
+        // Call triggerNav (with debounce) or remoteWS in WebView
+        final String script = "if (window.triggerNav) { window.triggerNav('" + action + "'); } else if (window.remoteWS) { window.remoteWS.sendAction('" + action + "'); }";
         webView.post(() -> webView.evaluateJavascript(script, val -> {
             android.util.Log.d("MainActivity", "evaluateJavascript (" + action + ") result: " + val);
         }));

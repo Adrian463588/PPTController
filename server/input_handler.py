@@ -14,6 +14,8 @@ class InputHandler:
         self.cursor_x = self.screen_width // 2
         self.cursor_y = self.screen_height // 2
         self.laser_active = False
+        self._last_slide_time = 0.0
+        self._debounce_threshold = 0.2
 
     def _ensure_interactive_desktop(self):
         """Attaches current thread to interactive user desktop ('default')."""
@@ -114,26 +116,34 @@ class InputHandler:
         return target_hwnd, platform
 
     def _send_key_with_focus(self, vk_code: int):
-        """Sends keystroke with focus and dual injection (PageDown, PageUp, etc.)."""
-        target_hwnd, _ = self.focus_target_window()
-
-        if target_hwnd:
-            # Post directly to window
-            user32.PostMessageW(target_hwnd, win32con.WM_KEYDOWN, vk_code, 0)
-            user32.PostMessageW(target_hwnd, win32con.WM_KEYUP, vk_code, 0)
-
-        # Global keybd_event injection
-        user32.keybd_event(vk_code, 0, 0, 0)
+        """Sends clean single keystroke with foreground focus."""
+        self.focus_target_window()
+        scan_code = user32.MapVirtualKeyW(vk_code, 0)
+        user32.keybd_event(vk_code, scan_code, 0, 0)
         time.sleep(0.01)
-        user32.keybd_event(vk_code, 0, win32con.KEYEVENTF_KEYUP, 0)
+        user32.keybd_event(vk_code, scan_code, win32con.KEYEVENTF_KEYUP, 0)
 
-    def next_slide(self):
-        """Advances slide (PageDown / VK_NEXT)."""
+    def _is_slide_debounced(self) -> bool:
+        """Suppresses duplicate triggers within debounce window."""
+        now = time.time()
+        if now - self._last_slide_time < self._debounce_threshold:
+            return True
+        self._last_slide_time = now
+        return False
+
+    def next_slide(self) -> bool:
+        """Advances slide (PageDown / VK_NEXT) with debounce protection."""
+        if self._is_slide_debounced():
+            return False
         self._send_key_with_focus(win32con.VK_NEXT)
+        return True
 
-    def prev_slide(self):
-        """Reverses slide (PageUp / VK_PRIOR)."""
+    def prev_slide(self) -> bool:
+        """Reverses slide (PageUp / VK_PRIOR) with debounce protection."""
+        if self._is_slide_debounced():
+            return False
         self._send_key_with_focus(win32con.VK_PRIOR)
+        return True
 
     def start_presentation(self, from_beginning=True):
         """Starts presentation (F5 or Shift+F5)."""
