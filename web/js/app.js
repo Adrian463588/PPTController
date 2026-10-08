@@ -239,12 +239,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const dx = clientX - lastTouchX;
     const dy = clientY - lastTouchY;
 
-    touchStartDist += Math.hypot(dx, dy);
+    const dist = Math.hypot(dx, dy);
+    touchStartDist += dist;
     lastTouchX = clientX;
     lastTouchY = clientY;
 
     updateTrackpadDotPos(clientX, clientY);
-    ws.sendLaserMove(dx, dy, true, sensitivity);
+
+    // Dynamic power-law ballistics acceleration (high-RPS mouse physics)
+    const accel = 1.0 + Math.min(dist * 0.12, 3.5);
+    const dynamicSens = 3.6 * gyroSpeedMultiplier * accel;
+    ws.sendLaserMove(dx, dy, true, dynamicSens);
   };
 
   const endPointer = () => {

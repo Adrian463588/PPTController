@@ -120,3 +120,12 @@ def test_universal_laser_dot(server_instance):
     handler.set_laser_state(False)
     assert handler.laser_active is False
     assert handler.laser_dot.is_visible is False
+
+def test_high_speed_trackpad_acceleration(server_instance):
+    handler = server_instance.input_handler
+    initial_x, _ = handler.cursor_x, handler.cursor_y
+    # Fast flick with boosted high-RPS sensitivity (e.g. 28.0)
+    new_x, new_y = handler.move_cursor_relative(20.0, 15.0, sensitivity=28.0)
+    assert 0 <= new_x <= handler.screen_width
+    assert 0 <= new_y <= handler.screen_height
+    assert abs(new_x - initial_x) > 100 or new_x in (0, handler.screen_width)
