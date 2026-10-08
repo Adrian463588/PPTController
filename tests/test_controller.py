@@ -91,3 +91,14 @@ def test_slide_debounce(server_instance):
     import time
     time.sleep(0.26)
     assert handler.next_slide() is True
+
+def test_cursor_relative_movement(server_instance):
+    handler = server_instance.input_handler
+    # Test responsive movement within bounds
+    x1, y1 = handler.move_cursor_relative(50.0, 30.0, sensitivity=2.5)
+    assert 0 <= x1 <= handler.screen_width
+    assert 0 <= y1 <= handler.screen_height
+    # Test boundary clamping at screen edges
+    x_max, y_max = handler.move_cursor_relative(999999.0, 999999.0, sensitivity=1.0)
+    assert x_max == handler.screen_width
+    assert y_max == handler.screen_height

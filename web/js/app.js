@@ -21,8 +21,26 @@ document.addEventListener("DOMContentLoaded", () => {
   const timerDisplay = document.getElementById("timer-display");
   const btnTimerToggle = document.getElementById("btn-timer-toggle");
   const btnTimerReset = document.getElementById("btn-timer-reset");
-  const canvaBtns = document.querySelectorAll(".canva-btn");
   const gyroToggle = document.getElementById("gyro-toggle");
+  const gyroSpeedBtn = document.getElementById("gyro-speed");
+
+  // Gyroscope Speed Modes (RPS & Sensitivity)
+  const speedModes = [
+    { text: "⚡ Kecepatan: 1x (Normal)", mult: 1.0 },
+    { text: "⚡ Kecepatan: 2x (Cepat)", mult: 2.0 },
+    { text: "⚡ Kecepatan: 3x (Turbo)", mult: 3.5 }
+  ];
+  let speedModeIndex = 1; // Default 2x
+  let gyroSpeedMultiplier = 2.0;
+
+  if (gyroSpeedBtn) {
+    gyroSpeedBtn.addEventListener("click", () => {
+      speedModeIndex = (speedModeIndex + 1) % speedModes.length;
+      gyroSpeedMultiplier = speedModes[speedModeIndex].mult;
+      gyroSpeedBtn.textContent = speedModes[speedModeIndex].text;
+      vibrate(25);
+    });
+  }
 
   // State
   let lastTouchX = 0;
@@ -300,12 +318,20 @@ document.addEventListener("DOMContentLoaded", () => {
       if (dGamma > 180) dGamma -= 360;
       if (dGamma < -180) dGamma += 360;
 
-      // Apply deadzone to avoid sensor micro-jitter
-      const deadzone = 0.15;
-      const moveX = Math.abs(dGamma) > deadzone ? dGamma * 8.0 : 0;
-      const moveY = Math.abs(dBeta) > deadzone ? dBeta * 8.0 : 0;
+      // Filter micro-tremors with fine deadzone
+      const deadzone = 0.10;
+      const absX = Math.abs(dGamma);
+      const absY = Math.abs(dBeta);
 
-      if (moveX !== 0 || moveY !== 0) {
+      if (absX > deadzone || absY > deadzone) {
+        // Dynamic velocity acceleration (ballistics power-law like high-RPS mouse)
+        const speed = Math.hypot(dGamma, dBeta);
+        const accel = 1.0 + Math.min(speed * 0.75, 4.0);
+        const dynamicGain = 22.0 * gyroSpeedMultiplier * accel;
+
+        const moveX = absX > deadzone ? dGamma * dynamicGain : 0;
+        const moveY = absY > deadzone ? dBeta * dynamicGain : 0;
+
         ws.sendLaserMove(moveX, moveY, true, 1.0);
       }
     }

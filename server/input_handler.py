@@ -201,10 +201,16 @@ class InputHandler:
                 user32.keybd_event(win32con.VK_CONTROL, 0, win32con.KEYEVENTF_KEYUP, 0)
 
     def move_cursor_relative(self, dx: float, dy: float, sensitivity: float = 1.8):
-        """Moves cursor coordinates on screen smoothly."""
+        """Moves cursor coordinates on screen smoothly, relative to real OS position."""
         self._ensure_interactive_desktop()
-        self.cursor_x = max(0, min(self.screen_width, self.cursor_x + int(dx * sensitivity)))
-        self.cursor_y = max(0, min(self.screen_height, self.cursor_y + int(dy * sensitivity)))
+        try:
+            pt = win32api.GetCursorPos()
+            cur_x, cur_y = pt[0], pt[1]
+        except Exception:
+            cur_x, cur_y = self.cursor_x, self.cursor_y
+
+        self.cursor_x = max(0, min(self.screen_width, cur_x + int(dx * sensitivity)))
+        self.cursor_y = max(0, min(self.screen_height, cur_y + int(dy * sensitivity)))
         user32.SetCursorPos(self.cursor_x, self.cursor_y)
         return self.cursor_x, self.cursor_y
 
