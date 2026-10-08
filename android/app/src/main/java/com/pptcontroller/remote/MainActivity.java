@@ -197,13 +197,20 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         return super.onKeyUp(keyCode, event);
     }
 
+    private long lastSensorDispatchTime = 0;
+    private float accumulatedDx = 0f;
+    private float accumulatedDy = 0f;
+
     private void startGyroSensors() {
         if (sensorManager != null && !isGyroRunning) {
             isGyroRunning = true;
-            if (rotationSensor != null) {
-                sensorManager.registerListener(this, rotationSensor, SensorManager.SENSOR_DELAY_GAME);
-            } else if (gyroSensor != null) {
+            accumulatedDx = 0f;
+            accumulatedDy = 0f;
+            lastSensorDispatchTime = android.os.SystemClock.uptimeMillis();
+            if (gyroSensor != null) {
                 sensorManager.registerListener(this, gyroSensor, SensorManager.SENSOR_DELAY_GAME);
+            } else if (rotationSensor != null) {
+                sensorManager.registerListener(this, rotationSensor, SensorManager.SENSOR_DELAY_GAME);
             }
         }
     }
@@ -219,19 +226,33 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     public void onSensorChanged(SensorEvent event) {
         if (!isGyroRunning || webView == null) return;
 
-        if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR) {
+        if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
+            // In phone portrait pointing towards presentation screen:
+            // - Horizontal panning (left/right) is rotation around Z-axis (values[2])
+            // - Vertical tilting (up/down) is rotation around X-axis (values[0])
+            float dx = -event.values[2] * 2.5f;
+            float dy = -event.values[0] * 2.5f;
+
+            accumulatedDx += dx;
+            accumulatedDy += dy;
+
+            long now = android.os.SystemClock.uptimeMillis();
+            if (now - lastSensorDispatchTime >= 20) { // ~50Hz smooth updates
+                final float sendX = accumulatedDx;
+                final float sendY = accumulatedDy;
+                accumulatedDx = 0f;
+                accumulatedDy = 0f;
+                lastSensorDispatchTime = now;
+                final String js = "if (window.onNativeGyroDelta) window.onNativeGyroDelta(" + sendX + ", " + sendY + ");";
+                webView.post(() -> webView.evaluateJavascript(js, null));
+            }
+        } else if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR) {
             SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
             SensorManager.getOrientation(rotationMatrix, orientationAngles);
-            // orientationAngles: [0] = azimuth, [1] = pitch, [2] = roll (all in radians)
+            // orientationAngles: [0] = azimuth/yaw (rad), [1] = pitch (rad)
+            float yawDeg = (float) Math.toDegrees(orientationAngles[0]);
             float pitchDeg = (float) Math.toDegrees(orientationAngles[1]);
-            float rollDeg = (float) Math.toDegrees(orientationAngles[2]);
-            final String js = "if (window.onNativeOrientation) window.onNativeOrientation(" + pitchDeg + ", " + rollDeg + ");";
-            webView.post(() -> webView.evaluateJavascript(js, null));
-        } else if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
-            // values: [0] = rad/s around x (pitch), [1] = rad/s around y (roll)
-            float pitchDelta = (float) Math.toDegrees(event.values[0] * 0.02f);
-            float rollDelta = (float) Math.toDegrees(event.values[1] * 0.02f);
-            final String js = "if (window.onNativeGyroDelta) window.onNativeGyroDelta(" + rollDelta + ", " + pitchDelta + ");";
+            final String js = "if (window.onNativeOrientation) window.onNativeOrientation(" + yawDeg + ", " + pitchDeg + ");";
             webView.post(() -> webView.evaluateJavascript(js, null));
         }
     }

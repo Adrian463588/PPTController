@@ -1,4 +1,6 @@
 import ctypes
+import ctypes.wintypes
+import threading
 import time
 import win32api
 import win32con
@@ -6,6 +8,74 @@ import win32gui
 
 user32 = ctypes.windll.user32
 kernel32 = ctypes.windll.kernel32
+gdi32 = ctypes.windll.gdi32
+
+class Win32LaserDot:
+    """Lightweight 24x24 borderless, click-through, circular red laser dot overlay."""
+    def __init__(self):
+        self.hwnd = None
+        self._visible = False
+        self._ready = threading.Event()
+        self._thread = threading.Thread(target=self._run, daemon=True)
+        self._thread.start()
+        self._ready.wait(timeout=2.0)
+
+    def _run(self):
+        hdesk = user32.OpenDesktopW("default", 0, False, 0x10000000)
+        if hdesk:
+            user32.SetThreadDesktop(hdesk)
+
+        wc = win32gui.WNDCLASS()
+        wc.lpfnWndProc = win32gui.DefWindowProc
+        wc.lpszClassName = "PPTUniversalLaserDot"
+        wc.hCursor = win32gui.LoadCursor(0, win32con.IDC_ARROW)
+        wc.hbrBackground = gdi32.CreateSolidBrush(0x0000FF)  # Pure Red in BGR (0x0000FF)
+        try:
+            win32gui.RegisterClass(wc)
+        except Exception:
+            pass
+
+        ex_style = (
+            win32con.WS_EX_TOPMOST
+            | win32con.WS_EX_LAYERED
+            | win32con.WS_EX_TRANSPARENT
+            | win32con.WS_EX_TOOLWINDOW
+            | win32con.WS_EX_NOACTIVATE
+        )
+        style = win32con.WS_POPUP
+
+        self.hwnd = user32.CreateWindowExW(
+            ex_style, "PPTUniversalLaserDot", "LaserDot", style,
+            -100, -100, 24, 24, 0, 0, 0, 0
+        )
+        if self.hwnd:
+            hrgn = gdi32.CreateEllipticRgn(0, 0, 24, 24)
+            user32.SetWindowRgn(self.hwnd, hrgn, True)
+            user32.SetLayeredWindowAttributes(self.hwnd, 0, 245, win32con.LWA_ALPHA)
+        self._ready.set()
+
+        msg = ctypes.wintypes.MSG()
+        while user32.GetMessageW(ctypes.byref(msg), 0, 0, 0) != 0:
+            user32.TranslateMessage(ctypes.byref(msg))
+            user32.DispatchMessageW(ctypes.byref(msg))
+
+    def show(self, x: int, y: int):
+        self._visible = True
+        if self.hwnd:
+            user32.SetWindowPos(
+                self.hwnd, win32con.HWND_TOPMOST,
+                int(x) - 12, int(y) - 12, 24, 24,
+                win32con.SWP_NOACTIVATE | win32con.SWP_SHOWWINDOW
+            )
+
+    def hide(self):
+        self._visible = False
+        if self.hwnd:
+            user32.ShowWindow(self.hwnd, win32con.SW_HIDE)
+
+    @property
+    def is_visible(self) -> bool:
+        return self._visible
 
 class InputHandler:
     def __init__(self):
@@ -17,6 +87,7 @@ class InputHandler:
         self.laser_active = False
         self._last_slide_time = 0.0
         self._debounce_threshold = 0.2
+        self.laser_dot = Win32LaserDot()
 
     def _ensure_interactive_desktop(self):
         """Attaches current thread to interactive user desktop ('default')."""
@@ -173,40 +244,37 @@ class InputHandler:
             self._send_key_with_focus(ord(effect_char.upper()))
 
     def set_laser_state(self, visible: bool):
-        """Activates native laser pointer (Ctrl+L for PowerPoint, L for Google Slides) or arrow cursor."""
+        """Activates universal laser pointer across PowerPoint, Canva, and Google Slides."""
+        self.laser_active = visible
+        if visible:
+            self.laser_dot.show(self.cursor_x, self.cursor_y)
+        else:
+            self.laser_dot.hide()
+
         target_hwnd, platform = self.focus_target_window()
 
         if platform == "googleslides":
-            # Google Slides toggles laser pointer using 'L'
-            if (visible and not self.laser_active) or (not visible and self.laser_active):
-                self.laser_active = visible
-                user32.keybd_event(ord('L'), 0, 0, 0)
-                time.sleep(0.01)
-                user32.keybd_event(ord('L'), 0, win32con.KEYEVENTF_KEYUP, 0)
+            # Google Slides toggles native laser pointer using 'L'
+            user32.keybd_event(ord('L'), 0, 0, 0)
+            time.sleep(0.01)
+            user32.keybd_event(ord('L'), 0, win32con.KEYEVENTF_KEYUP, 0)
         elif platform == "powerpoint":
             # PowerPoint native laser pointer (Ctrl+L) or revert to arrow (Ctrl+A)
-            # Only trigger shortcut if slide show (screenClass) is actually active
+            # Synchronized when slide show (screenClass) is actively running
             h_slideshow = user32.FindWindowW("screenClass", None)
             if h_slideshow:
-                if visible and not self.laser_active:
-                    self.laser_active = True
+                if visible:
                     user32.keybd_event(win32con.VK_CONTROL, 0, 0, 0)
                     user32.keybd_event(ord('L'), 0, 0, 0)
                     time.sleep(0.01)
                     user32.keybd_event(ord('L'), 0, win32con.KEYEVENTF_KEYUP, 0)
                     user32.keybd_event(win32con.VK_CONTROL, 0, win32con.KEYEVENTF_KEYUP, 0)
-                elif not visible and self.laser_active:
-                    self.laser_active = False
+                else:
                     user32.keybd_event(win32con.VK_CONTROL, 0, 0, 0)
                     user32.keybd_event(ord('A'), 0, 0, 0)
                     time.sleep(0.01)
                     user32.keybd_event(ord('A'), 0, win32con.KEYEVENTF_KEYUP, 0)
                     user32.keybd_event(win32con.VK_CONTROL, 0, win32con.KEYEVENTF_KEYUP, 0)
-            else:
-                self.laser_active = visible
-        else:
-            # Canva or generic app: track active state without sending rogue Ctrl+L to browser
-            self.laser_active = visible
 
     def move_cursor_relative(self, dx: float, dy: float, sensitivity: float = 1.8):
         """Moves cursor coordinates on screen smoothly, relative to real OS position and generates mouse movement event."""
@@ -233,6 +301,11 @@ class InputHandler:
         delta_x = self.cursor_x - cur_x
         delta_y = self.cursor_y - cur_y
         user32.mouse_event(win32con.MOUSEEVENTF_MOVE, delta_x, delta_y, 0, 0)
+
+        # Update universal laser dot position
+        if self.laser_active:
+            self.laser_dot.show(self.cursor_x, self.cursor_y)
+
         return self.cursor_x, self.cursor_y
 
     def set_cursor_normalized(self, norm_x: float, norm_y: float):
@@ -251,6 +324,11 @@ class InputHandler:
             self.cursor_y = int(max(0.0, min(1.0, norm_y)) * self.screen_height)
         user32.SetCursorPos(self.cursor_x, self.cursor_y)
         user32.mouse_event(win32con.MOUSEEVENTF_MOVE, 1, 1, 0, 0)
+
+        # Update universal laser dot position
+        if self.laser_active:
+            self.laser_dot.show(self.cursor_x, self.cursor_y)
+
         return self.cursor_x, self.cursor_y
 
     def click(self, button='left'):

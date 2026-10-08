@@ -299,55 +299,62 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Gyroscope / Air-Mouse Mode
-  function handleGyroDelta(dGamma, dBeta) {
+  function handleGyroDelta(dX, dY) {
     if (!isGyroActive) return;
 
     // Filter micro-tremors with fine deadzone
-    const deadzone = 0.08;
-    const absX = Math.abs(dGamma);
-    const absY = Math.abs(dBeta);
+    const deadzone = 0.05;
+    const absX = Math.abs(dX);
+    const absY = Math.abs(dY);
 
     if (absX > deadzone || absY > deadzone) {
       // Dynamic velocity acceleration (ballistics power-law like high-RPS mouse)
-      const speed = Math.hypot(dGamma, dBeta);
+      const speed = Math.hypot(dX, dY);
       const accel = 1.0 + Math.min(speed * 0.75, 4.0);
-      const dynamicGain = 24.0 * gyroSpeedMultiplier * accel;
+      const dynamicGain = 20.0 * gyroSpeedMultiplier * accel;
 
-      const moveX = absX > deadzone ? dGamma * dynamicGain : 0;
-      const moveY = absY > deadzone ? dBeta * dynamicGain : 0;
+      const moveX = absX > deadzone ? dX * dynamicGain : 0;
+      const moveY = absY > deadzone ? dY * dynamicGain : 0;
 
       ws.sendLaserMove(moveX, moveY, true, 1.0);
     }
   }
 
+  let lastGyroYaw = null;
+  let lastGyroPitch = null;
+
   function handleDeviceOrientation(e) {
     if (!isGyroActive) return;
-    const beta = e.beta;   // Pitch (-180 to 180)
-    const gamma = e.gamma; // Roll (-90 to 90)
-    if (beta === null || gamma === null || typeof beta === "undefined") return;
+    // In phone portrait pointing forward:
+    // alpha = compass heading / yaw (0 to 360)
+    // beta = pitch (-180 to 180)
+    const yaw = typeof e.alpha !== "undefined" && e.alpha !== null ? e.alpha : (typeof e.yaw !== "undefined" ? e.yaw : null);
+    const pitch = typeof e.beta !== "undefined" && e.beta !== null ? e.beta : (typeof e.pitch !== "undefined" ? e.pitch : null);
+    if (yaw === null || pitch === null) return;
 
-    if (lastGyroBeta !== null && lastGyroGamma !== null) {
-      let dGamma = gamma - lastGyroGamma;
-      let dBeta = beta - lastGyroBeta;
+    if (lastGyroYaw !== null && lastGyroPitch !== null) {
+      let dYaw = yaw - lastGyroYaw;
+      let dPitch = pitch - lastGyroPitch;
 
-      // Handle roll boundary wrapping
-      if (dGamma > 180) dGamma -= 360;
-      if (dGamma < -180) dGamma += 360;
+      // Compass boundary wrapping (0 - 360)
+      if (dYaw > 180) dYaw -= 360;
+      if (dYaw < -180) dYaw += 360;
 
-      handleGyroDelta(dGamma, dBeta);
+      // Turning phone right decreases alpha in browser -> negate for positive screen X
+      handleGyroDelta(-dYaw, dPitch);
     }
 
-    lastGyroBeta = beta;
-    lastGyroGamma = gamma;
+    lastGyroYaw = yaw;
+    lastGyroPitch = pitch;
   }
 
   // Native Android Bridge hooks
-  window.onNativeOrientation = (beta, gamma) => {
-    handleDeviceOrientation({ beta, gamma });
+  window.onNativeOrientation = (yaw, pitch) => {
+    handleDeviceOrientation({ alpha: yaw, beta: pitch });
   };
 
-  window.onNativeGyroDelta = (dGamma, dBeta) => {
-    handleGyroDelta(dGamma, dBeta);
+  window.onNativeGyroDelta = (dX, dY) => {
+    handleGyroDelta(dX, dY);
   };
 
   if (gyroToggle) {
@@ -386,8 +393,8 @@ document.addEventListener("DOMContentLoaded", () => {
         isGyroActive = false;
         gyroToggle.classList.remove("active");
         gyroToggle.textContent = "🎯 Air-Mouse (Gyro)";
-        lastGyroBeta = null;
-        lastGyroGamma = null;
+        lastGyroYaw = null;
+        lastGyroPitch = null;
         ws.sendLaserState(false);
         vibrate(20);
       }

@@ -102,3 +102,21 @@ def test_cursor_relative_movement(server_instance):
     x_max, y_max = handler.move_cursor_relative(999999.0, 999999.0, sensitivity=1.0)
     assert x_max == handler.screen_width
     assert y_max == handler.screen_height
+
+def test_universal_laser_dot(server_instance):
+    handler = server_instance.input_handler
+    assert handler.laser_dot is not None
+    # Test activating universal laser
+    handler.set_laser_state(True)
+    assert handler.laser_active is True
+    assert handler.laser_dot.is_visible is True
+
+    # Test moving cursor updates laser
+    x, y = handler.move_cursor_relative(10.0, 10.0)
+    assert 0 <= x <= handler.screen_width
+    assert 0 <= y <= handler.screen_height
+
+    # Test deactivating universal laser
+    handler.set_laser_state(False)
+    assert handler.laser_active is False
+    assert handler.laser_dot.is_visible is False
