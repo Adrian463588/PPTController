@@ -76,6 +76,7 @@ class PresentationServer:
 
         if msg_type == "action":
             action = data.get("action")
+            print(f"[WS Action] Received action: {action}", flush=True)
             if action == "next":
                 self.input_handler.next_slide()
             elif action == "prev":
@@ -112,6 +113,7 @@ class PresentationServer:
 
         elif msg_type == "laser_state":
             visible = bool(data.get("visible", False))
+            print(f"[WS Laser] Laser state: {visible}", flush=True)
             self.input_handler.set_laser_state(visible)
 
         elif msg_type == "ping":

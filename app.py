@@ -1,4 +1,5 @@
 import sys
+sys.stdout.reconfigure(line_buffering=True)
 import time
 import threading
 import webbrowser

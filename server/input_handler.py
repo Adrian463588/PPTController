@@ -24,14 +24,14 @@ class InputHandler:
         except Exception:
             pass
 
-    def find_target_presentation_hwnd(self) -> int:
-        """Finds PowerPoint SlideShow (screenClass), Presenter View, or Main Window (PPTFrameClass)."""
+    def find_target_presentation_hwnd(self) -> tuple[int, str]:
+        """Finds active presentation window and identifies platform ('powerpoint', 'canva', 'googleslides', 'generic')."""
         self._ensure_interactive_desktop()
 
         # 1. Active PowerPoint Fullscreen Slide Show
         h_slideshow = user32.FindWindowW("screenClass", None)
         if h_slideshow and user32.IsWindowVisible(h_slideshow):
-            return h_slideshow
+            return h_slideshow, "powerpoint"
 
         # 2. PowerPoint Presenter View
         candidate_hwnd = 0
@@ -55,17 +55,18 @@ class InputHandler:
             0
         )
         if candidate_hwnd:
-            return candidate_hwnd
+            return candidate_hwnd, "powerpoint"
 
         # 3. PowerPoint Main Application window (exact class PPTFrameClass)
         h_ppt = user32.FindWindowW("PPTFrameClass", None)
         if h_ppt and user32.IsWindowVisible(h_ppt):
-            return h_ppt
+            return h_ppt, "powerpoint"
 
-        # 4. Canva presentation (browser window with Canva)
-        canva_hwnd = 0
-        def canva_cb(hwnd, _):
-            nonlocal canva_hwnd
+        # 4. Canva or Google Slides presentation (browser windows)
+        browser_hwnd = 0
+        platform_type = "generic"
+        def browser_cb(hwnd, _):
+            nonlocal browser_hwnd, platform_type
             if not user32.IsWindowVisible(hwnd):
                 return True
             length = user32.GetWindowTextLengthW(hwnd)
@@ -73,22 +74,30 @@ class InputHandler:
                 return True
             buf = ctypes.create_unicode_buffer(length + 1)
             user32.GetWindowTextW(hwnd, buf, length + 1)
-            title = buf.value
-            if "Canva" in title:
-                canva_hwnd = hwnd
+            title = buf.value.lower()
+            if "canva" in title:
+                browser_hwnd = hwnd
+                platform_type = "canva"
+                return False
+            if any(term in title for term in ["google slides", "slide google", "google slide", "slides.google", "presentasi"]):
+                browser_hwnd = hwnd
+                platform_type = "googleslides"
                 return False
             return True
 
         user32.EnumWindows(
-            ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_ulong, ctypes.c_long)(canva_cb),
+            ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_ulong, ctypes.c_long)(browser_cb),
             0
         )
-        return canva_hwnd
+        if browser_hwnd:
+            return browser_hwnd, platform_type
 
-    def focus_target_window(self) -> int:
+        return 0, "generic"
+
+    def focus_target_window(self) -> tuple[int, str]:
         """Brings the target presentation window to the foreground."""
         self._ensure_interactive_desktop()
-        target_hwnd = self.find_target_presentation_hwnd()
+        target_hwnd, platform = self.find_target_presentation_hwnd()
         if target_hwnd:
             fore_hwnd = user32.GetForegroundWindow()
             if fore_hwnd != target_hwnd:
@@ -102,11 +111,11 @@ class InputHandler:
                     time.sleep(0.02)
                 except Exception:
                     pass
-        return target_hwnd
+        return target_hwnd, platform
 
     def _send_key_with_focus(self, vk_code: int):
         """Sends keystroke with focus and dual injection (PageDown, PageUp, etc.)."""
-        target_hwnd = self.focus_target_window()
+        target_hwnd, _ = self.focus_target_window()
 
         if target_hwnd:
             # Post directly to window
@@ -153,26 +162,33 @@ class InputHandler:
             self._send_key_with_focus(ord(effect_char.upper()))
 
     def set_laser_state(self, visible: bool):
-        """Activates PowerPoint native laser pointer (Ctrl+L) or reverts to arrow (Ctrl+A)."""
-        if visible and not self.laser_active:
-            self.laser_active = True
-            self.focus_target_window()
-            # Send Ctrl + L (PowerPoint native Laser Pointer)
-            user32.keybd_event(win32con.VK_CONTROL, 0, 0, 0)
-            user32.keybd_event(ord('L'), 0, 0, 0)
-            time.sleep(0.01)
-            user32.keybd_event(ord('L'), 0, win32con.KEYEVENTF_KEYUP, 0)
-            user32.keybd_event(win32con.VK_CONTROL, 0, win32con.KEYEVENTF_KEYUP, 0)
+        """Activates native laser pointer (Ctrl+L for PowerPoint, L for Google Slides) or arrow cursor."""
+        target_hwnd, platform = self.focus_target_window()
 
-        elif not visible and self.laser_active:
-            self.laser_active = False
-            self.focus_target_window()
-            # Send Ctrl + A (Revert to standard arrow cursor)
-            user32.keybd_event(win32con.VK_CONTROL, 0, 0, 0)
-            user32.keybd_event(ord('A'), 0, 0, 0)
-            time.sleep(0.01)
-            user32.keybd_event(ord('A'), 0, win32con.KEYEVENTF_KEYUP, 0)
-            user32.keybd_event(win32con.VK_CONTROL, 0, win32con.KEYEVENTF_KEYUP, 0)
+        if platform == "googleslides":
+            # Google Slides toggles laser pointer using 'L'
+            if (visible and not self.laser_active) or (not visible and self.laser_active):
+                self.laser_active = visible
+                user32.keybd_event(ord('L'), 0, 0, 0)
+                time.sleep(0.01)
+                user32.keybd_event(ord('L'), 0, win32con.KEYEVENTF_KEYUP, 0)
+        else:
+            # PowerPoint native laser pointer (Ctrl+L) or revert to arrow (Ctrl+A)
+            if visible and not self.laser_active:
+                self.laser_active = True
+                user32.keybd_event(win32con.VK_CONTROL, 0, 0, 0)
+                user32.keybd_event(ord('L'), 0, 0, 0)
+                time.sleep(0.01)
+                user32.keybd_event(ord('L'), 0, win32con.KEYEVENTF_KEYUP, 0)
+                user32.keybd_event(win32con.VK_CONTROL, 0, win32con.KEYEVENTF_KEYUP, 0)
+
+            elif not visible and self.laser_active:
+                self.laser_active = False
+                user32.keybd_event(win32con.VK_CONTROL, 0, 0, 0)
+                user32.keybd_event(ord('A'), 0, 0, 0)
+                time.sleep(0.01)
+                user32.keybd_event(ord('A'), 0, win32con.KEYEVENTF_KEYUP, 0)
+                user32.keybd_event(win32con.VK_CONTROL, 0, win32con.KEYEVENTF_KEYUP, 0)
 
     def move_cursor_relative(self, dx: float, dy: float, sensitivity: float = 1.8):
         """Moves cursor coordinates on screen smoothly."""

@@ -39,6 +39,39 @@
             android:textColor="#ffffff" />
     </LinearLayout>
 
+    <!-- Quick Mode Presets -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="6dp"
+        android:background="#151d30">
+
+        <Button
+            android:id="@+id/btn_mode_usb"
+            android:layout_width="0dp"
+            android:layout_height="38dp"
+            android:layout_weight="1"
+            android:text="🔌 USB (127.0.0.1)"
+            android:textSize="11sp"
+            android:backgroundTint="#334155"
+            android:textColor="#cbd5e1"
+            android:layout_marginEnd="4dp" />
+
+        <Button
+            android:id="@+id/btn_mode_wifi"
+            android:layout_width="0dp"
+            android:layout_height="38dp"
+            android:layout_weight="1"
+            android:text="📶 Wi-Fi (192.168.0.7)"
+            android:textSize="11sp"
+            android:backgroundTint="#334155"
+            android:textColor="#cbd5e1"
+            android:layout_marginStart="4dp" />
+    </LinearLayout>
+
     <!-- WebView hosting remote controller -->
     <WebView
         android:id="@+id/webview"

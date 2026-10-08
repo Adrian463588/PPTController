@@ -42,11 +42,13 @@ public class MainActivity extends AppCompatActivity {
 
         inputServerIp = findViewById(R.id.input_server_ip);
         btnConnect = findViewById(R.id.btn_connect);
+        Button btnModeUsb = findViewById(R.id.btn_mode_usb);
+        Button btnModeWifi = findViewById(R.id.btn_mode_wifi);
         webView = findViewById(R.id.webview);
 
         setupWebView();
 
-        String savedIp = prefs.getString(KEY_SERVER_IP, "192.168.0.5:8765");
+        String savedIp = prefs.getString(KEY_SERVER_IP, "127.0.0.1:8765");
         inputServerIp.setText(savedIp);
 
         btnConnect.setOnClickListener(v -> {
@@ -54,6 +56,16 @@ public class MainActivity extends AppCompatActivity {
             if (!ip.isEmpty()) {
                 loadServer(ip);
             }
+        });
+
+        btnModeUsb.setOnClickListener(v -> {
+            inputServerIp.setText("127.0.0.1:8765");
+            loadServer("127.0.0.1:8765");
+        });
+
+        btnModeWifi.setOnClickListener(v -> {
+            inputServerIp.setText("192.168.0.7:8765");
+            loadServer("192.168.0.7:8765");
         });
 
         // Automatically connect on launch with saved IP
@@ -96,6 +108,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void triggerAction(String action) {
+        android.util.Log.d("MainActivity", "triggerAction: " + action);
         // Haptic feedback
         if (vibrator != null && vibrator.hasVibrator()) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -107,22 +120,42 @@ public class MainActivity extends AppCompatActivity {
 
         // Call remoteWS.sendAction in WebView
         final String script = "if (window.remoteWS) { window.remoteWS.sendAction('" + action + "'); }";
-        webView.post(() -> webView.evaluateJavascript(script, null));
+        webView.post(() -> webView.evaluateJavascript(script, val -> {
+            android.util.Log.d("MainActivity", "evaluateJavascript (" + action + ") result: " + val);
+        }));
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        int keyCode = event.getKeyCode();
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
+            if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
+                triggerAction("next");
+            }
+            return true; // Completely consume event and suppress system volume
+        } else if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+            if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
+                triggerAction("prev");
+            }
+            return true; // Completely consume event and suppress system volume
+        }
+        return super.dispatchKeyEvent(event);
     }
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        // Intercept Hardware Volume Up -> Next Slide
-        if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
-            triggerAction("next");
-            return true; // Prevents default Android volume dialog
-        }
-        // Intercept Hardware Volume Down -> Prev Slide
-        else if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
-            triggerAction("prev");
-            return true; // Prevents default Android volume dialog
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+            return true;
         }
         return super.onKeyDown(keyCode, event);
+    }
+
+    @Override
+    public boolean onKeyUp(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+            return true;
+        }
+        return super.onKeyUp(keyCode, event);
     }
 
     @Override
